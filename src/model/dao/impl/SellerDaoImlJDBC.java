@@ -43,7 +43,30 @@ public class SellerDaoImlJDBC implements SellerDao{
 
 	@Override
 	public Seller findById(Integer id) {
-		
+		PreparedStatement st = null;
+		ResultSet rs = null;
+		try {
+			st = conn.prepareStatement(
+					"SELECT seller.*,department.Name as DepName "
+					+ "FROM seller INNER JOIN department "
+					+ "ON seller.DepartmentId = department.Id "
+					+ " WHERE seller.Id = ?");
+			
+			st.setInt(1, id);
+			rs = st.executeQuery();//esta apontando para a posição zero, onde nao possui posição
+			if(rs.next()) {
+				Department dep = instantiateDepartment(rs);
+				Seller obj = instantiateSeller(rs, dep);
+				return obj;
+			}
+			return null;
+		   }catch(SQLException e) {
+			   throw new DbException(e.getMessage());
+		   }
+		finally {
+			DB.closeStatement(st);
+			DB.closeResultSet(rs);
+		}
 		
 	}
 
@@ -68,8 +91,44 @@ public class SellerDaoImlJDBC implements SellerDao{
 
 	@Override
 	public List<Seller> findAll() {
-		// TODO Auto-generated method stub
-		return null;
+		PreparedStatement st = null;
+		ResultSet rs = null;
+		try {
+			st = conn.prepareStatement(
+					"SELECT seller.*,department.Name as DepName "
+					+ "FROM seller INNER JOIN department "
+					+ "ON seller.DepartmentId = department.Id "
+					+ "ORDER BY Name");
+			
+			
+			rs = st.executeQuery();//esta apontando para a posição zero, onde nao possui posição
+			
+			List<Seller> list = new ArrayList<>();
+			Map<Integer, Department> map = new HashMap<>();
+			
+			while(rs.next()) {
+				
+				Department dep = map.get(rs.getInt("DepartmentId"));
+				
+				if(dep == null) {
+					dep = instantiateDepartment(rs);
+					map.put(rs.getInt("DepartmentId"), dep);//salva o departament no map
+				}
+				//agora temos o seller apontando para o MESMO department(mesmo objeto) e não uma duplicação dele.
+				
+				Seller obj = instantiateSeller(rs, dep);
+				list.add(obj);
+				
+			}
+			return list;
+		   }
+		catch(SQLException e) {
+			   throw new DbException(e.getMessage());
+		   }
+		finally {
+			DB.closeStatement(st);
+			DB.closeResultSet(rs);
+		}
 	}
 
 	@Override
@@ -99,7 +158,7 @@ public class SellerDaoImlJDBC implements SellerDao{
 					dep = instantiateDepartment(rs);
 					map.put(rs.getInt("DepartmentId"), dep);//salva o departament no map
 				}
-				//agora temos o seller apontando para o MESMO department e não uma duplicação dele.
+				//agora temos o seller apontando para o MESMO department(mesmo objeto) e não uma duplicação dele.
 				
 				Seller obj = instantiateSeller(rs, dep);
 				list.add(obj);
